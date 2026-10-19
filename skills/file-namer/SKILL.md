@@ -1,0 +1,242 @@
+---
+name: file-namer
+description: "Name, rename, audit, and file documents in Google Drive with total consistency, and ACTUALLY rename and move them in place (not just suggest names) so links never break. Works for ANY use case, not just real estate: client files, business documents, marketing assets, personal files, or a landlord/property drive. Use whenever the user wants to name a new document, rename an existing file or folder, decide where a file belongs, clean up messy or inconsistent names, audit a folder for naming consistency, or set up folders. Triggers on: name this file, rename this doc, what should I call this, where does this go, file this for me, clean up these names, fix these file names, audit my folder, set up folders. For a whole messy drive, point it at the top folder and use the bulk flow. Real estate is one supported example (see the appendix)."
+---
+
+# File Namer (general purpose, any use case)
+
+**Version: 1.4 - 2026-10-19** (free edition)
+
+## Staying up to date (quick version check)
+
+On first use in a conversation, fetch
+`https://raw.githubusercontent.com/FindingLand/va-optional-free-skills/main/skills/file-namer/version.txt`.
+If the number there is higher than 1.4, tell the user once: "A newer version of the File Namer skill is
+out, free at github.com/FindingLand/va-optional-free-skills. Want the link?" Fail silently when offline,
+say it once per conversation, and never let it block the work.
+
+> ## ⛔ HARD RULE: never just suggest a name. Execute the rename and the move.
+> **A few files: use the Drive connector directly.** It renames and moves files AND folders in a
+> single call, keeping the file id and every existing link, with no browser and no permission
+> grant. Verified against the live connector on 2026-08-19.
+> **A whole-drive sweep, hundreds of files at once: use the bundled Apps Script**
+> (`scripts/drive_rename_move.gs`) per "Executing the Rename" below, because one script run beats
+> hundreds of calls. Run it FOR the user in the browser; **NEVER hand a non-technical user the
+> script with written steps.**
+> Either way, **NEVER hand back a list of suggested names without carrying out the change.**
+>
+> ⚠️ **This rule was WRONG until 2026-08-19 and said the connector could not rename or move at
+> all.** That was never tested and it is false. If you are reading a copy that still says the
+> Apps Script is the only mechanism, it is out of date: get the newest version (see the version check above).
+
+Give documents one consistent name and one correct home, every time, and then actually carry
+out the rename and the move in Google Drive. It handles one file or a whole
+folder tree; for a big backlog use the bulk flow in Executing the Rename.
+
+It replaces guesswork ("what did I call that file again?") with a simple, consistent rule set,
+and it does the renaming for you instead of leaving you a to-do list. It works **in place**, so
+the file keeps its ID and every existing link keeps working.
+
+It is **not** limited to real estate. The naming principles below apply to client documents,
+business paperwork, marketing assets, or personal files. Real estate has a dedicated template in
+the appendix (five-domain structure, shortcodes, category codes) for when that is the use case.
+
+**It handles files AND folders, and it is great for BULK.** Point it at a HIGH parent folder and
+one run can sweep every file and subfolder underneath (fix inconsistent or non-English folder
+names in the same pass). Enumerate the parent recursively to build the full operation list.
+
+---
+
+## First Run: Learn the Setup (ask once, then remember)
+
+Before naming anything, get what you need. If it is already in the conversation, do not re-ask.
+
+1. **The file(s) or folder to work on.** For a single file, its name/ID. For a bulk job, the
+   parent folder link (the ID is the part of the URL after `/folders/`).
+2. **Context / convention.** Does the user already have a naming convention to match, or should
+   you propose one from the best practices below? One line about what these documents are helps
+   you name them well (a client's contracts, invoices, marketing exports, property leases).
+3. **(Real estate only)** the company name, to derive the all-caps company shortcode. Skip this
+   for a general use case; clean human-readable names are enough.
+
+---
+
+## ⛔ Pick the right convention FIRST, and the property one is NOT the default
+
+**The general rules below are the default. The real-estate template in the appendix applies ONLY when
+the owner's own business profile says they run property.** Getting this backwards is a real failure,
+not a theoretical one: two of the first three owners to use this ran no rental property at all, and
+both were handed a property-manager convention full of property shortcodes and unit codes that meant
+nothing in their business. One of them had to say *"the current naming convention is real
+estate property manager specific, how would you suggest we update it to reflect my business model?"*
+That question should never have to be asked.
+
+**So, in order, every time:**
+
+1. **Know the business before proposing any convention.** If the user keeps a business profile or
+   project notes Claude can read, read them. Otherwise ask one line: what are these documents and what
+   is the business.
+2. **Property business: use the appendix.** Anything else: use the general rules below, and derive
+   the parts that need their vocabulary (client code, matter, engagement, campaign) from what they
+   actually call things, never from `[PROPERTY]` and `[UNIT]`.
+3. **When they have no client or party for a file, do not drop the slot silently.** Use their company
+   or business-line code instead, because an intentional code reads differently from an omission. One
+   owner asked for exactly this: most of her files are firm-level templates, and she wanted the firm
+   code present rather than the field left blank.
+4. **⭐ Save the agreed convention somewhere the next conversation will read it, the moment it is
+   agreed.** Best is a Claude Project's instructions or a notes file Claude reads at the start of each
+   session; if the user has neither, give them the convention as a short block to paste into their
+   Project instructions. A convention that lives only in the conversation is gone when they open the
+   next thread, which is exactly how one owner lost hers.
+5. **⛔ Once a convention is agreed, apply it to every file, with no exceptions of your own
+   invention.** If it produces a name you think is wrong for a particular document, **apply it anyway
+   and say in one line why you think it is wrong.** The real case: minutes after agreeing a new
+   convention, a document was left under its old name because a dated name "would be misleading" for
+   that one file. The owner's ruling: even if the title is wrong, the formula should have been
+   applied. **Deciding a rule does not fit a case is the owner's call, never yours.**
+
+## Naming Best Practices (use these unless the user has their own convention)
+
+A good filename tells you what the document is at a glance and sorts sensibly next to its
+siblings. Apply these:
+
+- **Be descriptive first.** Lead with what the document IS (`Signed-Lease`, `Q3-Invoice`,
+  `Buy-Box-Criteria`), not a scan number or `final FINAL v2`.
+- **Consistent casing, no raw spaces.** Use Hyphen-Case or PascalCase (`Cold-Calling-List`,
+  `MortgageStatement`). Avoid spaces and random capitalization so names are clean and
+  machine-friendly.
+- **Date anything time-bound**, one format throughout: `YYYY-MM-DD` (sorts chronologically) or
+  `MMDDYYYY`. Use the document's effective date when visible, else the filing date, and note it.
+- **Version when it matters.** Add `-v2`, `-v3` for revisions; keep the prior version, do not
+  overwrite it.
+- **Keep the extension** on uploaded files (`.pdf`, `.xlsx`, `.mkv`). For a NEW native Google
+  file, omit the extension (the title is the name).
+- **One home per document.** Decide the right folder; if it could live in two places, pick the
+  primary and note the secondary in the name.
+- **When unsure what a document is, ASK.** Do not name or file a doubtful file on a guess. A
+  misnamed or misfiled document is effectively lost, so a question is always cheaper.
+
+---
+
+## Setting Up Folders: always include a `To File` folder
+
+When you create a folder structure (a new skeleton, or the `FOLDERS` list in the script), put one
+catch-all folder at the top for new documents: `0_To File`, or `00_To File` when the other top
+folders are zero-padded (as in the real estate template). Share it as **anyone with the link can
+view** (Viewer, never Editor), so whatever the owner drops into it is visible to you and can be
+filed on request. Keep the words `To File` exactly as written: it is the name the setup guide
+teaches.
+
+- **Check for one first.** Search Drive for a folder titled `To File`. If the owner already has one,
+  do NOT create a second. Leave theirs where it is, confirm its share setting, and say so in one
+  line. Moving it into the structure is their call; never move or rename it unasked.
+- **Sharing:** on the script path, list its path in `SHARE_WITH_LINK` and the same run shares it.
+  The Drive connector cannot change sharing, so on the connector path the owner does it: right
+  click, Share, Anyone with the link, Viewer. Either way, check it worked by reading a file in it.
+- This is only for setting up folders. Naming or filing a few documents is not a reason to create
+  one.
+
+---
+
+## Executing the Rename (the part that actually changes Drive)
+
+This is what makes the skill more than advice.
+
+**For one file, or a handful, do NOT reach for the script.** The Drive connector updates a file's
+title and its parent folder in a single call, for files and folders alike, keeping the file id so
+every existing link survives. Change it, then re-list the destination to confirm, then say what you
+verified. That is the whole job and it works in a Cloud session or a Local one.
+
+**The steps below are for BULK: a whole folder tree, hundreds of items in one pass.** There the Apps
+Script wins, because it does in one run what would otherwise be hundreds of calls. It needs a browser
+and a one-time permission grant, so it is a Local job.
+
+1. **Identify the item(s).** Use Drive search to get each file/folder **ID**, current name, and
+   location. Never guess an ID.
+2. **Decide the new name + destination** with the best practices above (or the user's convention).
+3. **Show the plan** as a table (`Current Name | New Name | Destination | Notes`) and confirm
+   anything ambiguous BEFORE running.
+4. **Fill the Apps Script** `scripts/drive_rename_move.gs`: set `ROOT_FOLDER_ID` (a HIGH parent
+   for bulk), the `FOLDERS` skeleton if you are creating folders (with the `To File` folder, and
+   its path in `SHARE_WITH_LINK`, per Setting Up Folders above), and one `OPERATIONS` row per
+   item: `{ fileId, newName, destPath }`, plus `isFolder: true` for a folder. `newName` does the
+   rename, `destPath` does the move; the same single run does both.
+5. **RUN IT FOR THEM in the browser. Do NOT hand a non-technical user a script plus written
+   steps.** Drive script.google.com yourself with the Claude-in-Chrome tools; the user's ONLY
+   step is the one-time Google permission grant. Flow:
+   a. Open `https://script.google.com/home/projects/create` (fresh project).
+   b. Click into `Code.gs`, select all, delete, then **PASTE** the filled script (Ctrl/Cmd+V).
+      PASTE, never type it: the editor auto-closes brackets/quotes and corrupts typed code.
+   c. Save (Ctrl/Cmd+S). Confirm the function dropdown shows `organizeDrive`.
+   d. **Run directly to apply** (the script ships with `DRY_RUN = true`, so the first run always previews). After the preview, set `DRY_RUN = false` and run again to apply. Do NOT force a further dry-run
+      preview: you already showed the plan in step 3, and that approved plan plus the run summary are
+      the revert net (see "Finding a file later, and undoing a move"). Offer a `DRY_RUN = true` preview only if the user asks or for a large,
+      high-risk run.
+   e. **The one user step:** approve Google's popup: *Review permissions -> their account ->
+      "Google hasn't verified this app". This appears because YOU are the author of this script and Google has not reviewed it. Read the screen, confirm the project is the one you just created, then Advanced -> Go to <project> -> Allow.*
+   f. **After Allow, the script RUNS AUTOMATICALLY.** Do not click Run again or click it yourself.
+      Wait a few seconds, then read the log until it says **Finished**.
+   g. **Verify, and tell the user first WHY.** Say something like "I'll re-list the folder to
+      confirm each item got its new name, so we catch any mistake while it's easy to fix," then
+      re-list via Drive search and confirm. Report the result.
+   h. **End with the run summary:** every item's original name, new name and destination, so any
+      change can be found or reversed later.
+   Hand over the script + written steps ONLY as a fallback when browser tools are unavailable.
+
+Why in place and not copy-then-delete: `moveTo` and `setName` keep the file's original ID, so
+**every existing link keeps working**. A copy creates a new link and orphans the old one. Only
+offer copy-based handling if the user explicitly wants a duplicate.
+
+---
+
+## Finding a file later, and undoing a move
+
+**There is no file index.** Keeping a running log of every rename was retired in 1.4: it went stale,
+it was one more file to maintain, and Drive already answers both questions.
+
+**An older install may still have a `references/file-index.md` with entries in it.** That is the owner's
+own history: leave it in place, never delete it during an update, and simply stop writing to it.
+It can still answer an old "where did you put X?" if the Drive search comes up empty.
+
+- **"Where is the Doe lease?"** Search Drive by title, the way the owner would describe it. Because
+  every name follows the convention, the search finds it. Give the link.
+- **"What did you rename Scan_0423 to?" or "put that back":** every run ends with a summary listing
+  each item's original name, new name and destination, and the plan table the owner approved shows
+  the same. To undo, reverse that table and run the same engine. Drive's own Activity panel (the
+  file's details) also shows every rename and move, and its trash and version history cover the rest.
+  Rename and move in place keeps each file's id, so nothing is ever lost while you undo.
+
+---
+
+## Audit Mode
+
+When asked to audit a folder:
+1. Pull the file/folder list from Drive (titles + IDs).
+2. Check each item against the convention: descriptive? consistent casing, no stray spaces?
+   date format consistent? version where needed? correct destination folder?
+3. Return a table: `Current Name | Recommended Name | Destination | Action | Notes`.
+4. Flag anything whose correct home is ambiguous and ask before recommending a move.
+5. Offer to execute the fixes via the Apps Script (Executing the Rename, above).
+
+---
+
+## Appendix: Real Estate / Landlord Template
+
+When the documents ARE landlord/property paperwork, use this convention.
+
+**Five-domain structure:** `[COMPANY]/ 00_To File (shared, anyone with the link can view), 01_Legal, 02_Finance{Banking, Accounting, Taxes,
+Insurance-Portfolio-Level, Lending}, 03_Operations, 04_Properties/[Address]/{Finance, Leasing/
+[Tenant]/{01_Due-Diligence,02_Lease,03_Tenant-Communication}, Maintenance, Asset-Docs}, 05_Archive`.
+
+**Filename formula:** `[DESCRIPTOR]-v[N]-[PARTY]-[SCOPE]-[CATEGORY]-[MMDDYYYY].[ext]`
+(PascalCase descriptors, version from v1, party = last name or company first word).
+
+**Property shortcode:** `[StreetNumber][StreetNameAbbrev]` (4-6 caps, drop St/Ave/Rd; add `-U[N]`
+for unit-specific files). Examples: `123 Main St -> 123MAIN`, `456 Oak Ave -> 456OAK`.
+
+**Category codes:** LEGAL, FINANCE, TAX, INS, OPS, VENDOR (company); PURCHASE, LOAN, MORT, MAINT,
+RENO, PERMIT, WARRANTY, PHOTO (property); APP, LEASE, NOTICE, COMM (tenant).
+
+Examples: `SignedLease-v1-Doe-123MAIN-LEASE-02152026.pdf`,
+`Statement-Mar2026-v1-123MAIN-MORT-04012026.pdf`, `W9-v1-ABCPlumbing-ACME-VENDOR-03012026.pdf`.
+Keep the running shortcode list wherever the naming convention is saved (see step 4 above), so the same property reuses one code.
