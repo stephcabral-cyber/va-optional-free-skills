@@ -8,7 +8,7 @@ Free Claude skills, open to anyone.
 
 ## Install
 
-1. Download [`file-namer.skill`](https://github.com/FindingLand/va-optional-free-skills/raw/main/file-namer.skill).
+1. Download [`file-namer.skill`](https://github.com/stephcabral-cyber/va-optional-free-skills/raw/main/file-namer.skill).
 2. In Claude, open Settings, then Capabilities, then Skills, and upload the file.
 3. Connect Google Drive in Claude (Settings, then Connectors) if you have not already.
 4. Start a chat and say "file this for me" or "clean up the names in this folder".
